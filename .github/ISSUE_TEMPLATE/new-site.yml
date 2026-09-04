@@ -1,0 +1,86 @@
+name: 新規HP自動作成
+about: ヒアリング内容から新しいHPを自動生成します
+title: "[NEW SITE] "
+labels: ["new-site"]
+body:
+  - type: input
+    id: slug
+    attributes:
+      label: Site slug
+      description: URLに使う英数字とハイフン（例 personal-gym-kitasenju）
+      placeholder: personal-gym-kitasenju
+    validations:
+      required: true
+  - type: input
+    id: industry
+    attributes:
+      label: 業種
+      placeholder: パーソナルジム
+    validations:
+      required: true
+  - type: input
+    id: brand
+    attributes:
+      label: ブランド名・屋号
+      placeholder: TK PERSONAL TRAINING
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: ページタイトル
+      placeholder: TK PERSONAL TRAINING｜北千住のパーソナルトレーニング
+    validations:
+      required: true
+  - type: textarea
+    id: headline
+    attributes:
+      label: メインキャッチコピー
+      placeholder: 理想の身体を、あなたらしく。
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: メイン説明文
+      placeholder: 一人ひとりの生活に寄り添い、無理なく続けられる身体づくりを。
+    validations:
+      required: true
+  - type: input
+    id: line
+    attributes:
+      label: LINE URL
+      placeholder: https://lin.ee/xxxx
+  - type: input
+    id: email
+    attributes:
+      label: メールアドレス
+      placeholder: example@example.com
+  - type: textarea
+    id: features
+    attributes:
+      label: 強み
+      description: 1行につき「タイトル | 説明」
+      placeholder: |
+        無理なく続けられる | 生活スタイルに合わせた現実的なプラン
+        個別プログラム | 目的・経験・体力に合わせて最適化
+    validations:
+      required: true
+  - type: textarea
+    id: prices
+    attributes:
+      label: 料金
+      description: 1行につき「プラン名 | 価格 | 補足」
+      placeholder: |
+        10回コース | 95,000円（税込） | 1回あたり 9,500円
+        初回体験 | 5,000円（税込） | カウンセリング込み
+    validations:
+      required: true
+  - type: textarea
+    id: faq
+    attributes:
+      label: FAQ
+      description: 1行につき「質問 | 回答」
+      placeholder: |
+        運動経験がなくても大丈夫ですか？ | はい。経験や体力に合わせて進めます。
+        食事制限は厳しいですか？ | 生活に取り入れやすい方法をご提案します。

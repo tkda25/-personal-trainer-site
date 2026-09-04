@@ -1,0 +1,142 @@
+name: Create site from issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  create-site:
+    if: contains(github.event.issue.labels.*.name, 'new-site') || startsWith(github.event.issue.title, '[NEW SITE]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Generate site from issue
+        id: generate
+        uses: actions/github-script@v7
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const body = process.env.ISSUE_BODY || '';
+
+            const getSection = (label) => {
+              const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const re = new RegExp(`### ${escaped}\\n\\n([\\s\\S]*?)(?=\\n\\n### |$)`);
+              const m = body.match(re);
+              return m ? m[1].trim() : '';
+            };
+
+            const slug = getSection('Site slug').toLowerCase();
+            if (!/^[a-z0-9-]+$/.test(slug)) {
+              core.setFailed('Site slug は英小文字・数字・ハイフンのみ使用できます。');
+              return;
+            }
+
+            const industry = getSection('業種');
+            const brand = getSection('ブランド名・屋号');
+            const title = getSection('ページタイトル');
+            const headline = getSection('メインキャッチコピー');
+            const description = getSection('メイン説明文');
+            const lineUrl = getSection('LINE URL');
+            const email = getSection('メールアドレス');
+
+            if (!industry || !brand || !title || !headline || !description) {
+              core.setFailed('必須項目が不足しています。');
+              return;
+            }
+
+            const parseLines = (text, minParts) => text
+              .split(/\r?\n/)
+              .map(s => s.trim())
+              .filter(Boolean)
+              .map(line => line.split('|').map(s => s.trim()))
+              .filter(parts => parts.length >= minParts);
+
+            const features = parseLines(getSection('強み'), 2).map(([title, body]) => ({ title, body }));
+            const prices = parseLines(getSection('料金'), 2).map(([label, price, sub='']) => ({ label, price, sub }));
+            const faq = parseLines(getSection('FAQ'), 2).map(([q, a]) => ({ q, a }));
+
+            const config = {
+              industry,
+              brand,
+              title,
+              hero: {
+                eyebrow: industry.toUpperCase(),
+                headlineHtml: headline.replace(/\n/g, '<br>'),
+                descriptionHtml: description.replace(/\n/g, '<br>')
+              },
+              contact: { lineUrl, email },
+              concept: {
+                eyebrow: 'CONCEPT',
+                headlineHtml: headline.replace(/\n/g, '<br>'),
+                body: description
+              },
+              features,
+              prices,
+              results: [],
+              about: {
+                eyebrow: 'ABOUT',
+                headlineHtml: `${brand}について`,
+                body: `${industry}として、お客様一人ひとりに合わせたサービスをご提供します。`
+              },
+              faq,
+              cta: {
+                headlineHtml: 'まずは、お気軽に<br>ご相談ください。',
+                primaryLabel: lineUrl ? 'LINEで相談する' : 'お問い合わせ',
+                secondaryLabel: email ? 'メールで問い合わせ' : ''
+              }
+            };
+
+            const target = path.join('sites', slug);
+            if (fs.existsSync(target)) {
+              core.setFailed(`sites/${slug} は既に存在します。`);
+              return;
+            }
+            fs.mkdirSync(target, { recursive: true });
+
+            for (const file of ['index.html', 'style.css', 'script.js']) {
+              if (!fs.existsSync(file)) {
+                core.setFailed(`${file} が見つかりません。`);
+                return;
+              }
+              fs.copyFileSync(file, path.join(target, file));
+            }
+
+            fs.writeFileSync(path.join(target, 'site.config.js'), `window.SITE_CONFIG = ${JSON.stringify(config, null, 2)};\n`);
+            fs.writeFileSync(path.join(target, 'README.md'), `# ${brand}\n\nGenerated automatically from issue #${context.issue.number}.\n`);
+
+            core.setOutput('slug', slug);
+            core.setOutput('brand', brand);
+
+      - name: Commit generated site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sites/
+          git commit -m "Generate site from issue #${{ github.event.issue.number }}"
+          git push origin main
+
+      - name: Comment success
+        uses: actions/github-script@v7
+        env:
+          SITE_SLUG: ${{ steps.generate.outputs.slug }}
+        with:
+          script: |
+            const slug = process.env.SITE_SLUG;
+            const url = `https://${context.repo.owner}.github.io/${context.repo.repo}/sites/${slug}/`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `HPを自動生成しました。\n\n公開予定URL: ${url}\n\nGitHub Pagesのデプロイ完了後に閲覧できます。`
+            });
