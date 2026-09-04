@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /
+Sitemap: https://tkda25.github.io/-personal-trainer-site/sites/seo-test-kitasenju/sitemap.xml
