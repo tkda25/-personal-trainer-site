@@ -49,6 +49,7 @@ jobs:
             const resultItems=parseLines(getSection('実績'),2).map(([title,body])=>({title,body,photoText:'RESULT PHOTO'}));
             const reviews=parseLines(getSection('口コミ'),2).map(([name,body])=>({name,body}));
             const lineUrl=getSection('LINE URL'),email=getSection('メールアドレス'),photoUrls=getSection('写真URL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+            const verification=getSection('Google Search Console確認コード');
             const colorMatch=getSection('希望カラー').match(/#[0-9a-fA-F]{6}/);
             const owner=context.repo.owner,repo=context.repo.repo;
             const siteUrl=`https://${owner}.github.io/${repo}/sites/${slug}/`;
@@ -66,6 +67,7 @@ jobs:
               business:{address:getSection('住所'),hours:getSection('営業時間'),phone:getSection('電話番号'),mapUrl:getSection('GoogleマップURL')},
               social:{instagram:getSection('Instagram'),x:getSection('X'),tiktok:getSection('TikTok'),youtube:getSection('YouTube')},
               assets:{logoUrl:getSection('ロゴURL'),photoUrls,referenceUrls:getSection('参考サイトURL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)},
+              searchConsole:{verification},
               notes:getSection('その他の要望'),faq
             };
             const target=path.join('sites',slug);if(fs.existsSync(target)){core.setFailed(`sites/${slug} は既に存在します。`);return;}fs.mkdirSync(target,{recursive:true});
@@ -89,6 +91,7 @@ jobs:
             const seo=[
               `<link rel="canonical" href="${esc(siteUrl)}">`,
               `<meta name="robots" content="${isTest?'noindex,nofollow':'index,follow'}">`,
+              ...(verification?[`<meta name="google-site-verification" content="${esc(verification)}">`]:[]),
               `<meta property="og:type" content="website">`,
               `<meta property="og:locale" content="ja_JP">`,
               `<meta property="og:title" content="${esc(title)}">`,
@@ -106,7 +109,7 @@ jobs:
             fs.writeFileSync(path.join(target,'site.config.js'),`window.SITE_CONFIG = ${JSON.stringify(config,null,2)};\n`);
             fs.writeFileSync(path.join(target,'sitemap.xml'),`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${siteUrl}</loc></url></urlset>\n`);
             fs.writeFileSync(path.join(target,'robots.txt'),`${isTest?'User-agent: *\nDisallow: /':'User-agent: *\nAllow: /'}\nSitemap: ${siteUrl}sitemap.xml\n`);
-            fs.writeFileSync(path.join(target,'README.md'),`# ${brand}\n\nGenerated automatically from issue #${context.issue.number}.\n\nSEO: canonical / OGP / JSON-LD / sitemap / robots generated automatically.\n`);
+            fs.writeFileSync(path.join(target,'README.md'),`# ${brand}\n\nGenerated automatically from issue #${context.issue.number}.\n\nSEO: canonical / OGP / JSON-LD / sitemap / robots generated automatically.\nSearch Console verification: ${verification?'embedded':'not provided'}.\n`);
 
             const rootBase=`https://${owner}.github.io/${repo}/`;
             const urls=fs.existsSync('sites')?fs.readdirSync('sites',{withFileTypes:true}).filter(d=>d.isDirectory()&&!/test/i.test(d.name)).map(d=>`${rootBase}sites/${d.name}/`):[];
@@ -114,6 +117,7 @@ jobs:
             fs.writeFileSync('sitemap.xml',rootSitemap);
             fs.writeFileSync('robots.txt',`User-agent: *\nAllow: /\nSitemap: ${rootBase}sitemap.xml\n`);
             core.setOutput('slug',slug);
+            core.setOutput('has_verification',verification?'yes':'no');
 
       - name: Commit generated site
         run: |
@@ -140,9 +144,12 @@ jobs:
         env:
           SITE_SLUG: ${{ steps.generate.outputs.slug }}
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          HAS_VERIFICATION: ${{ steps.generate.outputs.has_verification }}
         with:
           script: |
             const slug=process.env.SITE_SLUG;
             const base=process.env.PAGE_URL||`https://${context.repo.owner}.github.io/${context.repo.repo}/`;
             const url=`${base.replace(/\/$/,'')}/sites/${slug}/`;
-            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:`HPを自動生成・公開しました。\n\n公開URL: ${url}\n\nSEO初期設定（canonical / OGP / 構造化データ / sitemap / robots）も自動生成済みです。`});
+            const sitemap=`${url}sitemap.xml`;
+            const verify=process.env.HAS_VERIFICATION==='yes'?'Search Console確認タグも埋め込み済みです。':'Search Console確認コードは未入力です。必要ならHTMLタグ方式の確認コードを追加してください。';
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:`HPを自動生成・公開しました。\n\n公開URL: ${url}\nサイトマップ: ${sitemap}\n\nSEO初期設定（canonical / OGP / 構造化データ / sitemap / robots）も自動生成済みです。\n${verify}\n\nSearch ConsoleではURLプレフィックスで公開URLを追加し、所有権確認後に sitemap.xml を送信してください。`});
