@@ -7,11 +7,16 @@ on:
 permissions:
   contents: write
   issues: write
+  pages: write
+  id-token: write
 
 jobs:
   create-site:
     if: contains(github.event.issue.labels.*.name, 'new-site') || startsWith(github.event.issue.title, '[NEW SITE]')
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,17 +131,31 @@ jobs:
           git commit -m "Generate site from issue #${{ github.event.issue.number }}"
           git push origin main
 
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
       - name: Comment success
         uses: actions/github-script@v7
         env:
           SITE_SLUG: ${{ steps.generate.outputs.slug }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         with:
           script: |
             const slug = process.env.SITE_SLUG;
-            const url = `https://${context.repo.owner}.github.io/${context.repo.repo}/sites/${slug}/`;
+            const base = process.env.PAGE_URL || `https://${context.repo.owner}.github.io/${context.repo.repo}/`;
+            const url = `${base.replace(/\/$/, '')}/sites/${slug}/`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `HPを自動生成しました。\n\n公開予定URL: ${url}\n\nGitHub Pagesのデプロイ完了後に閲覧できます。`
+              body: `HPを自動生成・公開しました。\n\n公開URL: ${url}`
             });
