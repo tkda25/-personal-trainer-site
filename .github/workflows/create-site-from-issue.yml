@@ -38,6 +38,7 @@ jobs:
             }
             const getSection=(label)=>(sections[label]||[]).join('\n').trim();
             const parseLines=(text,min)=>String(text||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(line=>line.split('|').map(s=>s.trim())).filter(p=>p.length>=min);
+            const esc=(v)=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
             const slug=getSection('Site slug').toLowerCase();
             if(!/^[a-z0-9-]+$/.test(slug)){core.setFailed('Site slug は英小文字・数字・ハイフンのみ使用できます。');return;}
             const industry=getSection('業種'),brand=getSection('ブランド名・屋号'),title=getSection('ページタイトル'),headline=getSection('メインキャッチコピー'),description=getSection('メイン説明文');
@@ -49,8 +50,11 @@ jobs:
             const reviews=parseLines(getSection('口コミ'),2).map(([name,body])=>({name,body}));
             const lineUrl=getSection('LINE URL'),email=getSection('メールアドレス'),photoUrls=getSection('写真URL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
             const colorMatch=getSection('希望カラー').match(/#[0-9a-fA-F]{6}/);
+            const owner=context.repo.owner,repo=context.repo.repo;
+            const siteUrl=`https://${owner}.github.io/${repo}/sites/${slug}/`;
+            const isTest=/(^|-)test($|-)|parser-test|auto-site-test/i.test(slug);
             const config={
-              brand,title,description,industry,
+              brand,title,description,industry,siteUrl,
               theme:{accent:colorMatch?colorMatch[0]:'#ad9151'},
               hero:{eyebrow:industry.toUpperCase(),headlineHtml:headline.replace(/\n/g,'<br>'),descriptionHtml:description.replace(/\n/g,'<br>'),photoText:'MAIN PHOTO'},
               contact:{primaryLabel:lineUrl?'LINEで相談する':'お問い合わせ',primaryUrl:lineUrl||'#contact',email,headlineHtml:'まずは、お気軽に<br>ご相談ください。',description:'ご質問・ご予約など、お気軽にお問い合わせください。'},
@@ -66,16 +70,57 @@ jobs:
             };
             const target=path.join('sites',slug);if(fs.existsSync(target)){core.setFailed(`sites/${slug} は既に存在します。`);return;}fs.mkdirSync(target,{recursive:true});
             for(const file of ['index.html','style.css','script.js']){if(!fs.existsSync(file)){core.setFailed(`${file} が見つかりません。`);return;}fs.copyFileSync(file,path.join(target,file));}
+
+            let html=fs.readFileSync(path.join(target,'index.html'),'utf8');
+            const ogImage=photoUrls[0]||getSection('ロゴURL')||'';
+            const sameAs=[getSection('Instagram'),getSection('X'),getSection('TikTok'),getSection('YouTube')].filter(Boolean);
+            const jsonLd={
+              '@context':'https://schema.org',
+              '@type':'LocalBusiness',
+              name:brand,
+              description,
+              url:siteUrl,
+              ...(getSection('住所')?{address:{'@type':'PostalAddress',streetAddress:getSection('住所')}}:{}),
+              ...(getSection('電話番号')?{telephone:getSection('電話番号')}:{}),
+              ...(ogImage?{image:ogImage}:{}),
+              ...(sameAs.length?{sameAs}:{}),
+              ...(priceItems.length?{priceRange:'¥¥'}:{})
+            };
+            const seo=[
+              `<link rel="canonical" href="${esc(siteUrl)}">`,
+              `<meta name="robots" content="${isTest?'noindex,nofollow':'index,follow'}">`,
+              `<meta property="og:type" content="website">`,
+              `<meta property="og:locale" content="ja_JP">`,
+              `<meta property="og:title" content="${esc(title)}">`,
+              `<meta property="og:description" content="${esc(description)}">`,
+              `<meta property="og:url" content="${esc(siteUrl)}">`,
+              `<meta property="og:site_name" content="${esc(brand)}">`,
+              ...(ogImage?[`<meta property="og:image" content="${esc(ogImage)}">`]:[]),
+              `<meta name="twitter:card" content="${ogImage?'summary_large_image':'summary'}">`,
+              `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g,'\\u003c')}</script>`
+            ].join('\n  ');
+            html=html.replace(/<meta name="description" content="[^"]*">/,`<meta name="description" content="${esc(description)}">`)
+                     .replace(/<title>[\s\S]*?<\/title>/,`<title>${esc(title)}</title>`)
+                     .replace('</head>',`  ${seo}\n</head>`);
+            fs.writeFileSync(path.join(target,'index.html'),html);
             fs.writeFileSync(path.join(target,'site.config.js'),`window.SITE_CONFIG = ${JSON.stringify(config,null,2)};\n`);
-            fs.writeFileSync(path.join(target,'README.md'),`# ${brand}\n\nGenerated automatically from issue #${context.issue.number}.\n`);
+            fs.writeFileSync(path.join(target,'sitemap.xml'),`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${siteUrl}</loc></url></urlset>\n`);
+            fs.writeFileSync(path.join(target,'robots.txt'),`${isTest?'User-agent: *\nDisallow: /':'User-agent: *\nAllow: /'}\nSitemap: ${siteUrl}sitemap.xml\n`);
+            fs.writeFileSync(path.join(target,'README.md'),`# ${brand}\n\nGenerated automatically from issue #${context.issue.number}.\n\nSEO: canonical / OGP / JSON-LD / sitemap / robots generated automatically.\n`);
+
+            const rootBase=`https://${owner}.github.io/${repo}/`;
+            const urls=fs.existsSync('sites')?fs.readdirSync('sites',{withFileTypes:true}).filter(d=>d.isDirectory()&&!/test/i.test(d.name)).map(d=>`${rootBase}sites/${d.name}/`):[];
+            const rootSitemap=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(u=>`<url><loc>${u}</loc></url>`).join('')}</urlset>\n`;
+            fs.writeFileSync('sitemap.xml',rootSitemap);
+            fs.writeFileSync('robots.txt',`User-agent: *\nAllow: /\nSitemap: ${rootBase}sitemap.xml\n`);
             core.setOutput('slug',slug);
 
       - name: Commit generated site
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add sites/
-          git commit -m "Generate site from issue #${{ github.event.issue.number }}"
+          git add sites/ sitemap.xml robots.txt
+          git commit -m "Generate site from issue #${{ github.event.issue.number }} with SEO"
           git push origin main
 
       - name: Configure Pages
@@ -100,4 +145,4 @@ jobs:
             const slug=process.env.SITE_SLUG;
             const base=process.env.PAGE_URL||`https://${context.repo.owner}.github.io/${context.repo.repo}/`;
             const url=`${base.replace(/\/$/,'')}/sites/${slug}/`;
-            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:`HPを自動生成・公開しました。\n\n公開URL: ${url}`});
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:`HPを自動生成・公開しました。\n\n公開URL: ${url}\n\nSEO初期設定（canonical / OGP / 構造化データ / sitemap / robots）も自動生成済みです。`});
