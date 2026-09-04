@@ -30,15 +30,13 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
         with:
           script: |
-            const fs = require('fs');
-            const path = require('path');
-            const body = process.env.ISSUE_BODY || '';
-            const getSection = (label) => {
-              const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const re = new RegExp(`### ${escaped}\\n\\n([\\s\\S]*?)(?=\\n\\n### |$)`);
-              const m = body.match(re);
-              return m ? m[1].trim() : '';
-            };
+            const fs=require('fs'),path=require('path'),body=process.env.ISSUE_BODY||'';
+            const sections={};let current=null;
+            for(const raw of body.split(/\r?\n/)){
+              if(raw.startsWith('### ')){current=raw.slice(4).trim();sections[current]=[];continue;}
+              if(current)sections[current].push(raw);
+            }
+            const getSection=(label)=>(sections[label]||[]).join('\n').trim();
             const parseLines=(text,min)=>String(text||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(line=>line.split('|').map(s=>s.trim())).filter(p=>p.length>=min);
             const slug=getSection('Site slug').toLowerCase();
             if(!/^[a-z0-9-]+$/.test(slug)){core.setFailed('Site slug は英小文字・数字・ハイフンのみ使用できます。');return;}
@@ -54,19 +52,17 @@ jobs:
             const config={
               brand,title,description,industry,
               theme:{accent:colorMatch?colorMatch[0]:'#ad9151'},
-              hero:{eyebrow:industry.toUpperCase(),headlineHtml:headline.replace(/\n/g,'<br>'),descriptionHtml:description.replace(/\n/g,'<br>'),photoText:photoUrls[0]?'MAIN PHOTO':'MAIN PHOTO'},
+              hero:{eyebrow:industry.toUpperCase(),headlineHtml:headline.replace(/\n/g,'<br>'),descriptionHtml:description.replace(/\n/g,'<br>'),photoText:'MAIN PHOTO'},
               contact:{primaryLabel:lineUrl?'LINEで相談する':'お問い合わせ',primaryUrl:lineUrl||'#contact',email,headlineHtml:'まずは、お気軽に<br>ご相談ください。',description:'ご質問・ご予約など、お気軽にお問い合わせください。'},
               concept:{headlineHtml:headline.replace(/\n/g,'<br>'),body:description},
               features:{title:`${brand}が選ばれる理由`,items:featureItems},
               services:{title:'サービス・料金',groups:[{title:'SERVICE / PRICE',items:priceItems}]},
-              results:{title:'実績・事例',items:resultItems},
-              reviews,
-              about:{headlineHtml:`${brand}について`,name:brand,body:`${industry}として、お客様一人ひとりに合わせたサービスをご提供します。`,photoText:photoUrls[1]?'ABOUT PHOTO':'ABOUT PHOTO'},
+              results:{title:'実績・事例',items:resultItems},reviews,
+              about:{headlineHtml:`${brand}について`,name:brand,body:`${industry}として、お客様一人ひとりに合わせたサービスをご提供します。`,photoText:'ABOUT PHOTO'},
               business:{address:getSection('住所'),hours:getSection('営業時間'),phone:getSection('電話番号'),mapUrl:getSection('GoogleマップURL')},
               social:{instagram:getSection('Instagram'),x:getSection('X'),tiktok:getSection('TikTok'),youtube:getSection('YouTube')},
               assets:{logoUrl:getSection('ロゴURL'),photoUrls,referenceUrls:getSection('参考サイトURL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)},
-              notes:getSection('その他の要望'),
-              faq
+              notes:getSection('その他の要望'),faq
             };
             const target=path.join('sites',slug);if(fs.existsSync(target)){core.setFailed(`sites/${slug} は既に存在します。`);return;}fs.mkdirSync(target,{recursive:true});
             for(const file of ['index.html','style.css','script.js']){if(!fs.existsSync(file)){core.setFailed(`${file} が見つかりません。`);return;}fs.copyFileSync(file,path.join(target,file));}
