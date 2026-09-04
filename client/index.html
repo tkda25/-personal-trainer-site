@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ホームページ制作ヒアリング</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f6f5f1;color:#1d1d1d;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;line-height:1.7}.wrap{max-width:860px;margin:0 auto;padding:48px 20px 80px}.card{background:#fff;border:1px solid #e8e3d7;border-radius:18px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.04)}h1{font-size:30px;margin:0 0 8px}h2{font-size:18px;margin:34px 0 14px}.lead{color:#666;margin:0 0 28px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.field{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}.full{grid-column:1/-1}label{font-weight:700;font-size:14px}input,textarea,select{width:100%;border:1px solid #d9d4c8;border-radius:10px;padding:13px 14px;font:inherit;background:#fff}textarea{min-height:110px;resize:vertical}.hint{font-size:12px;color:#777}.req{color:#a56f21}button{width:100%;border:0;border-radius:10px;padding:15px 18px;background:#1d1d1d;color:#fff;font-weight:700;font-size:16px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.status{margin-top:16px;padding:12px 14px;border-radius:10px;display:none}.status.ok{display:block;background:#eef8ef}.status.err{display:block;background:#fff0f0}.hp{position:absolute;left:-9999px;opacity:0}@media(max-width:700px){.grid{grid-template-columns:1fr}.wrap{padding-top:26px}.card{padding:20px}h1{font-size:26px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="card">
+      <h1>ホームページ制作ヒアリング</h1>
+      <p class="lead">必要事項をご入力ください。内容をもとに初稿サイトを自動生成します。</p>
+
+      <form id="intakeForm">
+        <div class="grid">
+          <div class="field"><label>会社名・屋号 <span class="req">*</span></label><input name="brand" required /></div>
+          <div class="field"><label>業種 <span class="req">*</span></label><input name="industry" placeholder="例：美容室、整体、パーソナルジム" required /></div>
+          <div class="field"><label>担当者名 <span class="req">*</span></label><input name="contactName" required /></div>
+          <div class="field"><label>メールアドレス <span class="req">*</span></label><input name="contactEmail" type="email" required /></div>
+          <div class="field full"><label>希望URL用ID <span class="req">*</span></label><input name="slug" pattern="[a-z0-9-]+" placeholder="例：sample-gym-kitasenju" required /><span class="hint">英小文字・数字・ハイフンのみ</span></div>
+        </div>
+
+        <h2>サイトの内容</h2>
+        <div class="field"><label>ページタイトル <span class="req">*</span></label><input name="title" placeholder="例：〇〇整体院｜北千住の整体" required /></div>
+        <div class="field"><label>メインキャッチコピー <span class="req">*</span></label><textarea name="headline" required></textarea></div>
+        <div class="field"><label>メイン説明文 <span class="req">*</span></label><textarea name="description" required></textarea></div>
+        <div class="field"><label>強み <span class="req">*</span></label><textarea name="features" placeholder="1行につき：タイトル | 説明&#10;例：完全個別対応 | 一人ひとりに合わせて提案" required></textarea></div>
+        <div class="field"><label>料金 <span class="req">*</span></label><textarea name="prices" placeholder="1行につき：プラン名 | 価格 | 補足&#10;例：初回体験 | 5,000円（税込） | カウンセリング込み" required></textarea></div>
+        <div class="field"><label>よくある質問</label><textarea name="faq" placeholder="1行につき：質問 | 回答"></textarea></div>
+
+        <h2>お問い合わせ先</h2>
+        <div class="grid">
+          <div class="field"><label>LINE URL</label><input name="lineUrl" type="url" placeholder="https://lin.ee/..." /></div>
+          <div class="field"><label>サイト掲載用メール</label><input name="publicEmail" type="email" /></div>
+          <div class="field full"><label>フォームアクセスコード <span class="req">*</span></label><input name="accessCode" type="password" required /><span class="hint">制作担当者から案内されたコードを入力してください。</span></div>
+        </div>
+
+        <div class="hp" aria-hidden="true"><label>Website<input name="website" autocomplete="off" tabindex="-1" /></label></div>
+        <button id="submitBtn" type="submit">内容を送信する</button>
+        <div id="status" class="status"></div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const form = document.getElementById('intakeForm');
+    const btn = document.getElementById('submitBtn');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status.className = 'status';
+      status.textContent = '';
+      btn.disabled = true;
+      btn.textContent = '送信中...';
+      const data = Object.fromEntries(new FormData(form).entries());
+      try {
+        const res = await fetch('/api/new-site', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(data)
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || '送信に失敗しました。');
+        status.className = 'status ok';
+        status.textContent = '送信が完了しました。内容を確認後、初稿サイトを作成します。';
+        form.reset();
+      } catch (err) {
+        status.className = 'status err';
+        status.textContent = err.message || '送信に失敗しました。';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '内容を送信する';
+      }
+    });
+  </script>
+</body>
+</html>
