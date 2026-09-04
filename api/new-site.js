@@ -1,85 +1,17 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const token = process.env.GITHUB_SITE_TOKEN;
-  const accessCode = process.env.FORM_ACCESS_CODE;
-  const owner = process.env.GITHUB_OWNER || 'tkda25';
-  const repo = process.env.GITHUB_REPO || '-personal-trainer-site';
-
-  if (!token || !accessCode) return res.status(500).json({ error: 'Server configuration is incomplete.' });
-
-  let data;
-  try { data = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}); }
-  catch { return res.status(400).json({ error: '送信データを読み取れませんでした。' }); }
-
-  if (data.website) return res.status(200).json({ ok: true });
-  if (data.accessCode !== accessCode) return res.status(403).json({ error: 'アクセスコードが違います。' });
-
-  const required = ['brand','industry','contactName','contactEmail','slug','title','headline','description','features','prices'];
-  for (const key of required) if (!String(data[key] || '').trim()) return res.status(400).json({ error: `必須項目が不足しています: ${key}` });
-
-  const slug = String(data.slug).trim().toLowerCase();
-  if (!/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ error: '希望URL用IDは英小文字・数字・ハイフンのみ使用できます。' });
-
-  const urlFields = ['lineUrl','mapUrl','instagram','xUrl','tiktok','youtube','logoUrl'];
-  for (const key of urlFields) {
-    const value = String(data[key] || '').trim();
-    if (value && !/^https?:\/\//i.test(value)) return res.status(400).json({ error: `${key} は http または https のURLを入力してください。` });
-  }
-
-  const clean = (v) => String(v || '').trim();
-  const section = (label, value) => ['### ' + label, '', clean(value), ''];
-  const body = [
-    ...section('Site slug', slug),
-    ...section('業種', data.industry),
-    ...section('ブランド名・屋号', data.brand),
-    ...section('ページタイトル', data.title),
-    ...section('メインキャッチコピー', data.headline),
-    ...section('メイン説明文', data.description),
-    ...section('LINE URL', data.lineUrl),
-    ...section('メールアドレス', data.publicEmail),
-    ...section('強み', data.features),
-    ...section('料金', data.prices),
-    ...section('FAQ', data.faq),
-    ...section('口コミ', data.reviews),
-    ...section('実績', data.results),
-    ...section('住所', data.address),
-    ...section('営業時間', data.hours),
-    ...section('電話番号', data.phone),
-    ...section('GoogleマップURL', data.mapUrl),
-    ...section('Instagram', data.instagram),
-    ...section('X', data.xUrl),
-    ...section('TikTok', data.tiktok),
-    ...section('YouTube', data.youtube),
-    ...section('希望カラー', `${clean(data.color)} ${clean(data.colorNote)}`),
-    ...section('参考サイトURL', data.referenceUrls),
-    ...section('ロゴURL', data.logoUrl),
-    ...section('写真URL', data.photoUrls),
-    ...section('Google Search Console確認コード', data.googleVerification),
-    ...section('その他の要望', data.notes),
-    '### 申込者情報','',`担当者: ${clean(data.contactName)}\n連絡先: ${clean(data.contactEmail)}`
-  ].join('\n');
-
-  const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/vnd.github+json',
-      'Authorization': `Bearer ${token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      'Content-Type': 'application/json',
-      'User-Agent': 'website-intake-bot'
-    },
-    body: JSON.stringify({ title: `[NEW SITE] ${clean(data.brand)}`, body })
-  });
-
-  const json = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error('GitHub issue creation failed', response.status, json);
-    return res.status(502).json({ error: '受付処理に失敗しました。制作担当者へご連絡ください。' });
-  }
-
-  return res.status(200).json({ ok: true, issueNumber: json.number });
+  if (req.method !== 'POST') { res.setHeader('Allow','POST'); return res.status(405).json({error:'Method not allowed'}); }
+  const token=process.env.GITHUB_SITE_TOKEN,accessCode=process.env.FORM_ACCESS_CODE,owner=process.env.GITHUB_OWNER||'tkda25',repo=process.env.GITHUB_REPO||'-personal-trainer-site';
+  if(!token||!accessCode)return res.status(500).json({error:'Server configuration is incomplete.'});
+  let data;try{data=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{})}catch{return res.status(400).json({error:'送信データを読み取れませんでした。'})}
+  if(data.website)return res.status(200).json({ok:true});if(data.accessCode!==accessCode)return res.status(403).json({error:'アクセスコードが違います。'});
+  const required=['brand','industry','contactName','contactEmail','slug','title','headline','description','features','prices'];for(const k of required)if(!String(data[k]||'').trim())return res.status(400).json({error:`必須項目が不足しています: ${k}`});
+  const slug=String(data.slug).trim().toLowerCase();if(!/^[a-z0-9-]+$/.test(slug))return res.status(400).json({error:'希望URL用IDは英小文字・数字・ハイフンのみ使用できます。'});
+  const urlFields=['lineUrl','mapUrl','instagram','xUrl','tiktok','youtube','logoUrl'];for(const k of urlFields){const v=String(data[k]||'').trim();if(v&&!/^https?:\/\//i.test(v))return res.status(400).json({error:`${k} は http または https のURLを入力してください。`})}
+  const allowedDesign=['luxury','minimal','friendly','bold','photo'],allowedStructure=['standard','conversion','story','proof'];
+  const clean=v=>String(v||'').trim(),section=(label,value)=>['### '+label,'',clean(value),''];
+  const hidden=['results','reviews','about','access','faq','concept'].filter(x=>data['hide'+x[0].toUpperCase()+x.slice(1)]).join(',');
+  const body=[...section('Site slug',slug),...section('業種',data.industry),...section('ブランド名・屋号',data.brand),...section('ページタイトル',data.title),...section('メインキャッチコピー',data.headline),...section('メイン説明文',data.description),...section('LINE URL',data.lineUrl),...section('メールアドレス',data.publicEmail),...section('強み',data.features),...section('料金',data.prices),...section('FAQ',data.faq),...section('口コミ',data.reviews),...section('実績',data.results),...section('住所',data.address),...section('営業時間',data.hours),...section('電話番号',data.phone),...section('GoogleマップURL',data.mapUrl),...section('Instagram',data.instagram),...section('X',data.xUrl),...section('TikTok',data.tiktok),...section('YouTube',data.youtube),...section('希望カラー',`${clean(data.color)} ${clean(data.colorNote)}`),...section('デザインタイプ',allowedDesign.includes(data.designPreset)?data.designPreset:'luxury'),...section('ページ構成',allowedStructure.includes(data.structurePreset)?data.structurePreset:'standard'),...section('非表示セクション',hidden),...section('デザイン要望',data.designNotes),...section('参考サイトURL',data.referenceUrls),...section('ロゴURL',data.logoUrl),...section('写真URL',data.photoUrls),...section('Google Search Console確認コード',data.googleVerification),...section('その他の要望',data.notes),'### 申込者情報','',`担当者: ${clean(data.contactName)}\n連絡先: ${clean(data.contactEmail)}`].join('\n');
+  const response=await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`,{method:'POST',headers:{'Accept':'application/vnd.github+json','Authorization':`Bearer ${token}`,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json','User-Agent':'website-intake-bot'},body:JSON.stringify({title:`[NEW SITE] ${clean(data.brand)}`,body})});
+  const json=await response.json().catch(()=>({}));if(!response.ok){console.error('GitHub issue creation failed',response.status,json);return res.status(502).json({error:'受付処理に失敗しました。制作担当者へご連絡ください。'})}
+  return res.status(200).json({ok:true,issueNumber:json.number});
 }

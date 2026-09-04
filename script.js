@@ -3,6 +3,7 @@ function initSite(){
   const text=(s,v)=>{if(v==null)return;const e=one(s);if(e)e.textContent=v},html=(s,v)=>{if(v==null)return;const e=one(s);if(e)e.innerHTML=v};
   if(c.title)document.title=c.title;if(c.description){const m=one('meta[name="description"]');if(m)m.setAttribute('content',c.description)}
   if(c.theme?.accent)document.documentElement.style.setProperty('--accent',c.theme.accent);
+  const preset=c.layout?.design||'luxury';document.body.dataset.design=preset;
   all('[data-brand]').forEach(e=>e.textContent=c.brand||'BRAND');text('[data-copyright]',`© ${new Date().getFullYear()} ${c.brand||'BRAND'}`);
   text('[data-hero-eyebrow]',c.hero?.eyebrow);html('[data-hero-headline]',c.hero?.headlineHtml);html('[data-hero-description]',c.hero?.descriptionHtml);text('[data-hero-photo]',c.hero?.photoText);
   html('[data-concept-headline]',c.concept?.headlineHtml);text('[data-concept-body]',c.concept?.body);
@@ -12,10 +13,13 @@ function initSite(){
   const rev=one('[data-reviews]');if(rev){rev.innerHTML=(c.reviews||[]).map(x=>`<article class="review-card"><p>“${x.body||''}”</p><strong>${x.name||''}</strong></article>`).join('');if(!(c.reviews||[]).length)one('#reviews').style.display='none'}
   html('[data-about-headline]',c.about?.headlineHtml);text('[data-about-name]',c.about?.name);text('[data-about-body]',c.about?.body);text('[data-about-photo]',c.about?.photoText);
   const info=one('[data-business-info]');if(info){const rows=[['住所',c.business?.address],['営業時間',c.business?.hours],['電話番号',c.business?.phone]].filter(([,v])=>v);info.innerHTML=rows.map(([k,v])=>`<div class="info-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');if(!rows.length&&!c.business?.mapUrl&&!Object.values(c.social||{}).some(Boolean))one('#access').style.display='none'}
-  const socials=one('[data-social-links]');if(socials){socials.innerHTML=Object.entries({Instagram:c.social?.instagram,X:c.social?.x,TikTok:c.social?.tiktok,YouTube:c.social?.youtube}).filter(([,u])=>u).map(([n,u])=>`<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('')}
+  const socials=one('[data-social-links]');if(socials)socials.innerHTML=Object.entries({Instagram:c.social?.instagram,X:c.social?.x,TikTok:c.social?.tiktok,YouTube:c.social?.youtube}).filter(([,u])=>u).map(([n,u])=>`<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('');
   const map=one('[data-map-card]');if(map&&c.business?.mapUrl)map.innerHTML=`<a class="gold" href="${c.business.mapUrl}" target="_blank" rel="noopener">Googleマップを開く</a>`;
   const fq=one('[data-faq]');if(fq)fq.innerHTML=(c.faq||[]).map(x=>`<details><summary>${x.q||''}</summary><p>${x.a||''}</p></details>`).join('');
   html('[data-contact-headline]',c.contact?.headlineHtml);text('[data-contact-description]',c.contact?.description);all('[data-primary-cta]').forEach(a=>{if(c.contact?.primaryLabel)a.textContent=c.contact.primaryLabel;if(c.contact?.primaryUrl)a.href=c.contact.primaryUrl});const em=one('[data-email-link]');if(em){if(c.contact?.email)em.href=`mailto:${c.contact.email}`;else em.style.display='none'}
+  const hidden=new Set(c.layout?.hidden||[]);hidden.forEach(id=>{const e=one('#'+id);if(e)e.style.display='none'});
+  const orders={standard:['concept','features','services','results','reviews','about','access','faq','contact'],conversion:['features','services','results','reviews','faq','about','access','concept','contact'],story:['concept','about','features','results','reviews','services','access','faq','contact'],proof:['results','reviews','features','services','about','access','faq','concept','contact']};
+  const main=one('main'),hero=one('.hero');if(main&&hero){const order=orders[c.layout?.structure]||orders.standard;order.forEach(id=>{const s=one('#'+id);if(s)main.appendChild(s)});main.insertBefore(hero,main.firstChild)}
   all('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=one(a.getAttribute('href'));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:'smooth'})}));
 }
 const configScript=document.createElement('script');configScript.src='site.config.js';configScript.onload=initSite;configScript.onerror=initSite;document.head.appendChild(configScript);
