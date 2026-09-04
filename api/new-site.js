@@ -9,36 +9,57 @@ export default async function handler(req, res) {
   const owner = process.env.GITHUB_OWNER || 'tkda25';
   const repo = process.env.GITHUB_REPO || '-personal-trainer-site';
 
-  if (!token || !accessCode) {
-    return res.status(500).json({ error: 'Server configuration is incomplete.' });
-  }
+  if (!token || !accessCode) return res.status(500).json({ error: 'Server configuration is incomplete.' });
 
-  const data = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+  let data;
+  try { data = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}); }
+  catch { return res.status(400).json({ error: '送信データを読み取れませんでした。' }); }
 
   if (data.website) return res.status(200).json({ ok: true });
   if (data.accessCode !== accessCode) return res.status(403).json({ error: 'アクセスコードが違います。' });
 
   const required = ['brand','industry','contactName','contactEmail','slug','title','headline','description','features','prices'];
-  for (const key of required) {
-    if (!String(data[key] || '').trim()) return res.status(400).json({ error: `必須項目が不足しています: ${key}` });
-  }
+  for (const key of required) if (!String(data[key] || '').trim()) return res.status(400).json({ error: `必須項目が不足しています: ${key}` });
 
   const slug = String(data.slug).trim().toLowerCase();
   if (!/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ error: '希望URL用IDは英小文字・数字・ハイフンのみ使用できます。' });
 
+  const urlFields = ['lineUrl','mapUrl','instagram','xUrl','tiktok','youtube','logoUrl'];
+  for (const key of urlFields) {
+    const value = String(data[key] || '').trim();
+    if (value && !/^https?:\/\//i.test(value)) return res.status(400).json({ error: `${key} は http または https のURLを入力してください。` });
+  }
+
+  const clean = (v) => String(v || '').trim();
+  const section = (label, value) => ['### ' + label, '', clean(value), ''];
   const body = [
-    '### Site slug', '', slug, '',
-    '### 業種', '', String(data.industry).trim(), '',
-    '### ブランド名・屋号', '', String(data.brand).trim(), '',
-    '### ページタイトル', '', String(data.title).trim(), '',
-    '### メインキャッチコピー', '', String(data.headline).trim(), '',
-    '### メイン説明文', '', String(data.description).trim(), '',
-    '### LINE URL', '', String(data.lineUrl || '').trim(), '',
-    '### メールアドレス', '', String(data.publicEmail || '').trim(), '',
-    '### 強み', '', String(data.features).trim(), '',
-    '### 料金', '', String(data.prices).trim(), '',
-    '### FAQ', '', String(data.faq || '').trim(), '',
-    '### 申込者情報', '', `担当者: ${String(data.contactName).trim()}\n連絡先: ${String(data.contactEmail).trim()}`
+    ...section('Site slug', slug),
+    ...section('業種', data.industry),
+    ...section('ブランド名・屋号', data.brand),
+    ...section('ページタイトル', data.title),
+    ...section('メインキャッチコピー', data.headline),
+    ...section('メイン説明文', data.description),
+    ...section('LINE URL', data.lineUrl),
+    ...section('メールアドレス', data.publicEmail),
+    ...section('強み', data.features),
+    ...section('料金', data.prices),
+    ...section('FAQ', data.faq),
+    ...section('口コミ', data.reviews),
+    ...section('実績', data.results),
+    ...section('住所', data.address),
+    ...section('営業時間', data.hours),
+    ...section('電話番号', data.phone),
+    ...section('GoogleマップURL', data.mapUrl),
+    ...section('Instagram', data.instagram),
+    ...section('X', data.xUrl),
+    ...section('TikTok', data.tiktok),
+    ...section('YouTube', data.youtube),
+    ...section('希望カラー', `${clean(data.color)} ${clean(data.colorNote)}`),
+    ...section('参考サイトURL', data.referenceUrls),
+    ...section('ロゴURL', data.logoUrl),
+    ...section('写真URL', data.photoUrls),
+    ...section('その他の要望', data.notes),
+    '### 申込者情報','',`担当者: ${clean(data.contactName)}\n連絡先: ${clean(data.contactEmail)}`
   ].join('\n');
 
   const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
@@ -50,10 +71,7 @@ export default async function handler(req, res) {
       'Content-Type': 'application/json',
       'User-Agent': 'website-intake-bot'
     },
-    body: JSON.stringify({
-      title: `[NEW SITE] ${String(data.brand).trim()}`,
-      body
-    })
+    body: JSON.stringify({ title: `[NEW SITE] ${clean(data.brand)}`, body })
   });
 
   const json = await response.json().catch(() => ({}));
