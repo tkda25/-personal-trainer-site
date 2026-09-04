@@ -1,104 +1,21 @@
-function initSite() {
-  const c = window.SITE_CONFIG || {};
-  const one = s => document.querySelector(s);
-  const all = s => [...document.querySelectorAll(s)];
-  const text = (s, v) => { if (v == null) return; const e = one(s); if (e) e.textContent = v; };
-  const html = (s, v) => { if (v == null) return; const e = one(s); if (e) e.innerHTML = v; };
-
-  if (c.title) document.title = c.title;
-  if (c.description) {
-    const meta = one('meta[name="description"]');
-    if (meta) meta.setAttribute('content', c.description);
-  }
-
-  all('[data-brand]').forEach(e => e.textContent = c.brand || 'BRAND');
-  text('[data-copyright]', `© ${new Date().getFullYear()} ${c.brand || 'BRAND'}`);
-
-  text('[data-hero-eyebrow]', c.hero?.eyebrow);
-  html('[data-hero-headline]', c.hero?.headlineHtml);
-  html('[data-hero-description]', c.hero?.descriptionHtml);
-  text('[data-hero-photo]', c.hero?.photoText);
-
-  html('[data-concept-headline]', c.concept?.headlineHtml);
-  text('[data-concept-body]', c.concept?.body);
-
-  text('[data-features-title]', c.features?.title);
-  const featureRoot = one('[data-features]');
-  if (featureRoot) {
-    featureRoot.innerHTML = (c.features?.items || []).map((item, i) => `
-      <article>
-        <small>${String(i + 1).padStart(2, '0')}</small>
-        <h3>${item.title || ''}</h3>
-        <p>${item.body || ''}</p>
-      </article>`).join('');
-  }
-
-  text('[data-services-title]', c.services?.title);
-  const serviceRoot = one('[data-service-groups]');
-  if (serviceRoot) {
-    serviceRoot.innerHTML = (c.services?.groups || []).map(group => `
-      <div class="service-group">
-        <h4>${group.title || ''}</h4>
-        <div class="grid auto-grid">
-          ${(group.items || []).map(item => `
-            <article class="${item.badge ? 'recommend' : ''}">
-              ${item.badge ? `<i>${item.badge}</i>` : ''}
-              <h3>${item.label || ''}</h3>
-              <strong>${item.price || ''}</strong>
-              ${item.sub ? `<p>${item.sub}</p>` : ''}
-            </article>`).join('')}
-        </div>
-        ${group.note ? `<p class="note">${group.note}</p>` : ''}
-      </div>`).join('');
-  }
-
-  text('[data-results-title]', c.results?.title);
-  const resultRoot = one('[data-results]');
-  if (resultRoot) {
-    resultRoot.innerHTML = (c.results?.items || []).map(item => `
-      <article class="result-card">
-        <div class="photo">${item.photoText || 'PHOTO'}</div>
-        <h3>${item.title || ''}</h3>
-        <p>${item.body || ''}</p>
-      </article>`).join('');
-  }
-
-  html('[data-about-headline]', c.about?.headlineHtml);
-  text('[data-about-name]', c.about?.name);
-  text('[data-about-body]', c.about?.body);
-  text('[data-about-photo]', c.about?.photoText);
-
-  const faqRoot = one('[data-faq]');
-  if (faqRoot) {
-    faqRoot.innerHTML = (c.faq || []).map(item => `
-      <details>
-        <summary>${item.q || ''}</summary>
-        <p>${item.a || ''}</p>
-      </details>`).join('');
-  }
-
-  html('[data-contact-headline]', c.contact?.headlineHtml);
-  text('[data-contact-description]', c.contact?.description);
-  all('[data-primary-cta]').forEach(a => {
-    if (c.contact?.primaryLabel) a.textContent = c.contact.primaryLabel;
-    if (c.contact?.primaryUrl) a.href = c.contact.primaryUrl;
-  });
-  const email = one('[data-email-link]');
-  if (email) {
-    if (c.contact?.email) email.href = `mailto:${c.contact.email}`;
-    else email.style.display = 'none';
-  }
-
-  all('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
-    const target = one(a.getAttribute('href'));
-    if (!target) return;
-    e.preventDefault();
-    target.scrollIntoView({ behavior: 'smooth' });
-  }));
+function initSite(){
+  const c=window.SITE_CONFIG||{},one=s=>document.querySelector(s),all=s=>[...document.querySelectorAll(s)];
+  const text=(s,v)=>{if(v==null)return;const e=one(s);if(e)e.textContent=v},html=(s,v)=>{if(v==null)return;const e=one(s);if(e)e.innerHTML=v};
+  if(c.title)document.title=c.title;if(c.description){const m=one('meta[name="description"]');if(m)m.setAttribute('content',c.description)}
+  if(c.theme?.accent)document.documentElement.style.setProperty('--accent',c.theme.accent);
+  all('[data-brand]').forEach(e=>e.textContent=c.brand||'BRAND');text('[data-copyright]',`© ${new Date().getFullYear()} ${c.brand||'BRAND'}`);
+  text('[data-hero-eyebrow]',c.hero?.eyebrow);html('[data-hero-headline]',c.hero?.headlineHtml);html('[data-hero-description]',c.hero?.descriptionHtml);text('[data-hero-photo]',c.hero?.photoText);
+  html('[data-concept-headline]',c.concept?.headlineHtml);text('[data-concept-body]',c.concept?.body);
+  text('[data-features-title]',c.features?.title);const fr=one('[data-features]');if(fr)fr.innerHTML=(c.features?.items||[]).map((x,i)=>`<article><small>${String(i+1).padStart(2,'0')}</small><h3>${x.title||''}</h3><p>${x.body||''}</p></article>`).join('');
+  text('[data-services-title]',c.services?.title);const sr=one('[data-service-groups]');if(sr)sr.innerHTML=(c.services?.groups||[]).map(g=>`<div class="service-group"><h4>${g.title||''}</h4><div class="grid auto-grid">${(g.items||[]).map(x=>`<article class="${x.badge?'recommend':''}">${x.badge?`<i>${x.badge}</i>`:''}<h3>${x.label||''}</h3><strong>${x.price||''}</strong>${x.sub?`<p>${x.sub}</p>`:''}</article>`).join('')}</div>${g.note?`<p class="note">${g.note}</p>`:''}</div>`).join('');
+  text('[data-results-title]',c.results?.title);const rr=one('[data-results]');if(rr){rr.innerHTML=(c.results?.items||[]).map(x=>`<article class="result-card"><div class="photo">${x.photoText||'PHOTO'}</div><h3>${x.title||''}</h3><p>${x.body||''}</p></article>`).join('');if(!(c.results?.items||[]).length)one('#results').style.display='none'}
+  const rev=one('[data-reviews]');if(rev){rev.innerHTML=(c.reviews||[]).map(x=>`<article class="review-card"><p>“${x.body||''}”</p><strong>${x.name||''}</strong></article>`).join('');if(!(c.reviews||[]).length)one('#reviews').style.display='none'}
+  html('[data-about-headline]',c.about?.headlineHtml);text('[data-about-name]',c.about?.name);text('[data-about-body]',c.about?.body);text('[data-about-photo]',c.about?.photoText);
+  const info=one('[data-business-info]');if(info){const rows=[['住所',c.business?.address],['営業時間',c.business?.hours],['電話番号',c.business?.phone]].filter(([,v])=>v);info.innerHTML=rows.map(([k,v])=>`<div class="info-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');if(!rows.length&&!c.business?.mapUrl&&!Object.values(c.social||{}).some(Boolean))one('#access').style.display='none'}
+  const socials=one('[data-social-links]');if(socials){socials.innerHTML=Object.entries({Instagram:c.social?.instagram,X:c.social?.x,TikTok:c.social?.tiktok,YouTube:c.social?.youtube}).filter(([,u])=>u).map(([n,u])=>`<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('')}
+  const map=one('[data-map-card]');if(map&&c.business?.mapUrl)map.innerHTML=`<a class="gold" href="${c.business.mapUrl}" target="_blank" rel="noopener">Googleマップを開く</a>`;
+  const fq=one('[data-faq]');if(fq)fq.innerHTML=(c.faq||[]).map(x=>`<details><summary>${x.q||''}</summary><p>${x.a||''}</p></details>`).join('');
+  html('[data-contact-headline]',c.contact?.headlineHtml);text('[data-contact-description]',c.contact?.description);all('[data-primary-cta]').forEach(a=>{if(c.contact?.primaryLabel)a.textContent=c.contact.primaryLabel;if(c.contact?.primaryUrl)a.href=c.contact.primaryUrl});const em=one('[data-email-link]');if(em){if(c.contact?.email)em.href=`mailto:${c.contact.email}`;else em.style.display='none'}
+  all('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=one(a.getAttribute('href'));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:'smooth'})}));
 }
-
-const configScript = document.createElement('script');
-configScript.src = 'site.config.js';
-configScript.onload = initSite;
-configScript.onerror = initSite;
-document.head.appendChild(configScript);
+const configScript=document.createElement('script');configScript.src='site.config.js';configScript.onload=initSite;configScript.onerror=initSite;document.head.appendChild(configScript);
