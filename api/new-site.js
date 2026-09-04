@@ -58,6 +58,7 @@ export default async function handler(req, res) {
     ...section('参考サイトURL', data.referenceUrls),
     ...section('ロゴURL', data.logoUrl),
     ...section('写真URL', data.photoUrls),
+    ...section('Google Search Console確認コード', data.googleVerification),
     ...section('その他の要望', data.notes),
     '### 申込者情報','',`担当者: ${clean(data.contactName)}\n連絡先: ${clean(data.contactEmail)}`
   ].join('\n');
