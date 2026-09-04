@@ -32,124 +32,59 @@ jobs:
           script: |
             const fs=require('fs'),path=require('path'),body=process.env.ISSUE_BODY||'';
             const sections={};let current=null;
-            for(const raw of body.split(/\r?\n/)){
-              if(raw.startsWith('### ')){current=raw.slice(4).trim();sections[current]=[];continue;}
-              if(current)sections[current].push(raw);
-            }
-            const getSection=(label)=>(sections[label]||[]).join('\n').trim();
+            for(const raw of body.split(/\r?\n/)){if(raw.startsWith('### ')){current=raw.slice(4).trim();sections[current]=[];continue;}if(current)sections[current].push(raw)}
+            const getSection=label=>(sections[label]||[]).join('\n').trim();
             const parseLines=(text,min)=>String(text||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(line=>line.split('|').map(s=>s.trim())).filter(p=>p.length>=min);
-            const esc=(v)=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            const slug=getSection('Site slug').toLowerCase();
-            if(!/^[a-z0-9-]+$/.test(slug)){core.setFailed('Site slug は英小文字・数字・ハイフンのみ使用できます。');return;}
-            const industry=getSection('業種'),brand=getSection('ブランド名・屋号'),title=getSection('ページタイトル'),headline=getSection('メインキャッチコピー'),description=getSection('メイン説明文');
-            if(!industry||!brand||!title||!headline||!description){core.setFailed('必須項目が不足しています。');return;}
+            const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const slug=getSection('Site slug').toLowerCase();if(!/^[a-z0-9-]+$/.test(slug)){core.setFailed('Site slug は英小文字・数字・ハイフンのみ使用できます。');return}
+            const industry=getSection('業種'),brand=getSection('ブランド名・屋号'),title=getSection('ページタイトル'),headline=getSection('メインキャッチコピー'),description=getSection('メイン説明文');if(!industry||!brand||!title||!headline||!description){core.setFailed('必須項目が不足しています。');return}
             const featureItems=parseLines(getSection('強み'),2).map(([title,body])=>({title,body}));
             const priceItems=parseLines(getSection('料金'),2).map(([label,price,sub=''])=>({label,price,sub}));
             const faq=parseLines(getSection('FAQ'),2).map(([q,a])=>({q,a}));
             const resultItems=parseLines(getSection('実績'),2).map(([title,body])=>({title,body,photoText:'RESULT PHOTO'}));
             const reviews=parseLines(getSection('口コミ'),2).map(([name,body])=>({name,body}));
-            const lineUrl=getSection('LINE URL'),email=getSection('メールアドレス'),photoUrls=getSection('写真URL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-            const verification=getSection('Google Search Console確認コード');
-            const colorMatch=getSection('希望カラー').match(/#[0-9a-fA-F]{6}/);
-            const owner=context.repo.owner,repo=context.repo.repo;
-            const siteUrl=`https://${owner}.github.io/${repo}/sites/${slug}/`;
-            const isTest=/(^|-)test($|-)|parser-test|auto-site-test/i.test(slug);
-            const config={
-              brand,title,description,industry,siteUrl,
-              theme:{accent:colorMatch?colorMatch[0]:'#ad9151'},
-              hero:{eyebrow:industry.toUpperCase(),headlineHtml:headline.replace(/\n/g,'<br>'),descriptionHtml:description.replace(/\n/g,'<br>'),photoText:'MAIN PHOTO'},
-              contact:{primaryLabel:lineUrl?'LINEで相談する':'お問い合わせ',primaryUrl:lineUrl||'#contact',email,headlineHtml:'まずは、お気軽に<br>ご相談ください。',description:'ご質問・ご予約など、お気軽にお問い合わせください。'},
-              concept:{headlineHtml:headline.replace(/\n/g,'<br>'),body:description},
-              features:{title:`${brand}が選ばれる理由`,items:featureItems},
-              services:{title:'サービス・料金',groups:[{title:'SERVICE / PRICE',items:priceItems}]},
-              results:{title:'実績・事例',items:resultItems},reviews,
-              about:{headlineHtml:`${brand}について`,name:brand,body:`${industry}として、お客様一人ひとりに合わせたサービスをご提供します。`,photoText:'ABOUT PHOTO'},
-              business:{address:getSection('住所'),hours:getSection('営業時間'),phone:getSection('電話番号'),mapUrl:getSection('GoogleマップURL')},
-              social:{instagram:getSection('Instagram'),x:getSection('X'),tiktok:getSection('TikTok'),youtube:getSection('YouTube')},
-              assets:{logoUrl:getSection('ロゴURL'),photoUrls,referenceUrls:getSection('参考サイトURL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)},
-              searchConsole:{verification},
-              notes:getSection('その他の要望'),faq
-            };
-            const target=path.join('sites',slug);if(fs.existsSync(target)){core.setFailed(`sites/${slug} は既に存在します。`);return;}fs.mkdirSync(target,{recursive:true});
-            for(const file of ['index.html','style.css','script.js']){if(!fs.existsSync(file)){core.setFailed(`${file} が見つかりません。`);return;}fs.copyFileSync(file,path.join(target,file));}
-
-            let html=fs.readFileSync(path.join(target,'index.html'),'utf8');
-            const ogImage=photoUrls[0]||getSection('ロゴURL')||'';
-            const sameAs=[getSection('Instagram'),getSection('X'),getSection('TikTok'),getSection('YouTube')].filter(Boolean);
-            const jsonLd={
-              '@context':'https://schema.org',
-              '@type':'LocalBusiness',
-              name:brand,
-              description,
-              url:siteUrl,
-              ...(getSection('住所')?{address:{'@type':'PostalAddress',streetAddress:getSection('住所')}}:{}),
-              ...(getSection('電話番号')?{telephone:getSection('電話番号')}:{}),
-              ...(ogImage?{image:ogImage}:{}),
-              ...(sameAs.length?{sameAs}:{}),
-              ...(priceItems.length?{priceRange:'¥¥'}:{})
-            };
-            const seo=[
-              `<link rel="canonical" href="${esc(siteUrl)}">`,
-              `<meta name="robots" content="${isTest?'noindex,nofollow':'index,follow'}">`,
-              ...(verification?[`<meta name="google-site-verification" content="${esc(verification)}">`]:[]),
-              `<meta property="og:type" content="website">`,
-              `<meta property="og:locale" content="ja_JP">`,
-              `<meta property="og:title" content="${esc(title)}">`,
-              `<meta property="og:description" content="${esc(description)}">`,
-              `<meta property="og:url" content="${esc(siteUrl)}">`,
-              `<meta property="og:site_name" content="${esc(brand)}">`,
-              ...(ogImage?[`<meta property="og:image" content="${esc(ogImage)}">`]:[]),
-              `<meta name="twitter:card" content="${ogImage?'summary_large_image':'summary'}">`,
-              `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g,'\\u003c')}</script>`
-            ].join('\n  ');
-            html=html.replace(/<meta name="description" content="[^"]*">/,`<meta name="description" content="${esc(description)}">`)
-                     .replace(/<title>[\s\S]*?<\/title>/,`<title>${esc(title)}</title>`)
-                     .replace('</head>',`  ${seo}\n</head>`);
-            fs.writeFileSync(path.join(target,'index.html'),html);
-            fs.writeFileSync(path.join(target,'site.config.js'),`window.SITE_CONFIG = ${JSON.stringify(config,null,2)};\n`);
-            fs.writeFileSync(path.join(target,'sitemap.xml'),`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${siteUrl}</loc></url></urlset>\n`);
-            fs.writeFileSync(path.join(target,'robots.txt'),`${isTest?'User-agent: *\nDisallow: /':'User-agent: *\nAllow: /'}\nSitemap: ${siteUrl}sitemap.xml\n`);
-            fs.writeFileSync(path.join(target,'README.md'),`# ${brand}\n\nGenerated automatically from issue #${context.issue.number}.\n\nSEO: canonical / OGP / JSON-LD / sitemap / robots generated automatically.\nSearch Console verification: ${verification?'embedded':'not provided'}.\n`);
-
-            const rootBase=`https://${owner}.github.io/${repo}/`;
-            const urls=fs.existsSync('sites')?fs.readdirSync('sites',{withFileTypes:true}).filter(d=>d.isDirectory()&&!/test/i.test(d.name)).map(d=>`${rootBase}sites/${d.name}/`):[];
-            const rootSitemap=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(u=>`<url><loc>${u}</loc></url>`).join('')}</urlset>\n`;
-            fs.writeFileSync('sitemap.xml',rootSitemap);
-            fs.writeFileSync('robots.txt',`User-agent: *\nAllow: /\nSitemap: ${rootBase}sitemap.xml\n`);
-            core.setOutput('slug',slug);
-            core.setOutput('has_verification',verification?'yes':'no');
+            const lineUrl=getSection('LINE URL'),email=getSection('メールアドレス'),photoUrls=getSection('写真URL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean),verification=getSection('Google Search Console確認コード');
+            const allowedDesign=['luxury','minimal','friendly','bold','photo'],allowedStructure=['standard','conversion','story','proof'];
+            const design=allowedDesign.includes(getSection('デザインタイプ'))?getSection('デザインタイプ'):'luxury';
+            const structure=allowedStructure.includes(getSection('ページ構成'))?getSection('ページ構成'):'standard';
+            const hidden=getSection('非表示セクション').split(',').map(s=>s.trim()).filter(x=>['results','reviews','about','access','faq','concept'].includes(x));
+            const colorMatch=getSection('希望カラー').match(/#[0-9a-fA-F]{6}/),owner=context.repo.owner,repo=context.repo.repo,siteUrl=`https://${owner}.github.io/${repo}/sites/${slug}/`,isTest=/(^|-)test($|-)|parser-test|auto-site-test/i.test(slug);
+            const config={brand,title,description,industry,siteUrl,layout:{design,structure,hidden,notes:getSection('デザイン要望')},theme:{accent:colorMatch?colorMatch[0]:'#ad9151'},hero:{eyebrow:industry.toUpperCase(),headlineHtml:headline.replace(/\n/g,'<br>'),descriptionHtml:description.replace(/\n/g,'<br>'),photoText:'MAIN PHOTO'},contact:{primaryLabel:lineUrl?'LINEで相談する':'お問い合わせ',primaryUrl:lineUrl||'#contact',email,headlineHtml:'まずは、お気軽に<br>ご相談ください。',description:'ご質問・ご予約など、お気軽にお問い合わせください。'},concept:{headlineHtml:headline.replace(/\n/g,'<br>'),body:description},features:{title:`${brand}が選ばれる理由`,items:featureItems},services:{title:'サービス・料金',groups:[{title:'SERVICE / PRICE',items:priceItems}]},results:{title:'実績・事例',items:resultItems},reviews,about:{headlineHtml:`${brand}について`,name:brand,body:`${industry}として、お客様一人ひとりに合わせたサービスをご提供します。`,photoText:'ABOUT PHOTO'},business:{address:getSection('住所'),hours:getSection('営業時間'),phone:getSection('電話番号'),mapUrl:getSection('GoogleマップURL')},social:{instagram:getSection('Instagram'),x:getSection('X'),tiktok:getSection('TikTok'),youtube:getSection('YouTube')},assets:{logoUrl:getSection('ロゴURL'),photoUrls,referenceUrls:getSection('参考サイトURL').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)},searchConsole:{verification},notes:getSection('その他の要望'),faq};
+            const target=path.join('sites',slug);if(fs.existsSync(target)){core.setFailed(`sites/${slug} は既に存在します。`);return}fs.mkdirSync(target,{recursive:true});
+            for(const file of ['index.html','style.css','script.js']){if(!fs.existsSync(file)){core.setFailed(`${file} が見つかりません。`);return}fs.copyFileSync(file,path.join(target,file))}
+            let page=fs.readFileSync(path.join(target,'index.html'),'utf8');const ogImage=photoUrls[0]||getSection('ロゴURL')||'',sameAs=[getSection('Instagram'),getSection('X'),getSection('TikTok'),getSection('YouTube')].filter(Boolean);
+            const jsonLd={'@context':'https://schema.org','@type':'LocalBusiness',name:brand,description,url:siteUrl,...(getSection('住所')?{address:{'@type':'PostalAddress',streetAddress:getSection('住所')}}:{}),...(getSection('電話番号')?{telephone:getSection('電話番号')}:{}),...(ogImage?{image:ogImage}:{}),...(sameAs.length?{sameAs}:{}),...(priceItems.length?{priceRange:'¥¥'}:{})};
+            const seo=[`<link rel="canonical" href="${esc(siteUrl)}">`,`<meta name="robots" content="${isTest?'noindex,nofollow':'index,follow'}">`,...(verification?[`<meta name="google-site-verification" content="${esc(verification)}">`]:[]),`<meta property="og:type" content="website">`,`<meta property="og:locale" content="ja_JP">`,`<meta property="og:title" content="${esc(title)}">`,`<meta property="og:description" content="${esc(description)}">`,`<meta property="og:url" content="${esc(siteUrl)}">`,`<meta property="og:site_name" content="${esc(brand)}">`,...(ogImage?[`<meta property="og:image" content="${esc(ogImage)}">`]:[]),`<meta name="twitter:card" content="${ogImage?'summary_large_image':'summary'}">`,`<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g,'\\u003c')}</script>`].join('\n  ');
+            page=page.replace(/<meta name="description" content="[^"]*">/,`<meta name="description" content="${esc(description)}">`).replace(/<title>[\s\S]*?<\/title>/,`<title>${esc(title)}</title>`).replace('</head>',`  ${seo}\n</head>`);
+            fs.writeFileSync(path.join(target,'index.html'),page);fs.writeFileSync(path.join(target,'site.config.js'),`window.SITE_CONFIG = ${JSON.stringify(config,null,2)};\n`);fs.writeFileSync(path.join(target,'sitemap.xml'),`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${siteUrl}</loc></url></urlset>\n`);fs.writeFileSync(path.join(target,'robots.txt'),`${isTest?'User-agent: *\nDisallow: /':'User-agent: *\nAllow: /'}\nSitemap: ${siteUrl}sitemap.xml\n`);fs.writeFileSync(path.join(target,'README.md'),`# ${brand}\n\nGenerated automatically from issue #${context.issue.number}.\nDesign: ${design}\nStructure: ${structure}\nHidden: ${hidden.join(', ')||'none'}\nSEO generated automatically.\n`);
+            const rootBase=`https://${owner}.github.io/${repo}/`,urls=fs.existsSync('sites')?fs.readdirSync('sites',{withFileTypes:true}).filter(d=>d.isDirectory()&&!/test/i.test(d.name)).map(d=>`${rootBase}sites/${d.name}/`):[];fs.writeFileSync('sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(u=>`<url><loc>${u}</loc></url>`).join('')}</urlset>\n`);fs.writeFileSync('robots.txt',`User-agent: *\nAllow: /\nSitemap: ${rootBase}sitemap.xml\n`);core.setOutput('slug',slug);core.setOutput('design',design);core.setOutput('structure',structure);core.setOutput('has_verification',verification?'yes':'no');
 
       - name: Commit generated site
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add sites/ sitemap.xml robots.txt
-          git commit -m "Generate site from issue #${{ github.event.issue.number }} with SEO"
+          git commit -m "Generate site from issue #${{ github.event.issue.number }} with layout and SEO"
           git push origin main
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
       - name: Comment success
         uses: actions/github-script@v7
         env:
           SITE_SLUG: ${{ steps.generate.outputs.slug }}
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          DESIGN: ${{ steps.generate.outputs.design }}
+          STRUCTURE: ${{ steps.generate.outputs.structure }}
           HAS_VERIFICATION: ${{ steps.generate.outputs.has_verification }}
         with:
           script: |
-            const slug=process.env.SITE_SLUG;
-            const base=process.env.PAGE_URL||`https://${context.repo.owner}.github.io/${context.repo.repo}/`;
-            const url=`${base.replace(/\/$/,'')}/sites/${slug}/`;
-            const sitemap=`${url}sitemap.xml`;
-            const verify=process.env.HAS_VERIFICATION==='yes'?'Search Console確認タグも埋め込み済みです。':'Search Console確認コードは未入力です。必要ならHTMLタグ方式の確認コードを追加してください。';
-            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:`HPを自動生成・公開しました。\n\n公開URL: ${url}\nサイトマップ: ${sitemap}\n\nSEO初期設定（canonical / OGP / 構造化データ / sitemap / robots）も自動生成済みです。\n${verify}\n\nSearch ConsoleではURLプレフィックスで公開URLを追加し、所有権確認後に sitemap.xml を送信してください。`});
+            const slug=process.env.SITE_SLUG,base=process.env.PAGE_URL||`https://${context.repo.owner}.github.io/${context.repo.repo}/`,url=`${base.replace(/\/$/,'')}/sites/${slug}/`,sitemap=`${url}sitemap.xml`,verify=process.env.HAS_VERIFICATION==='yes'?'Search Console確認タグも埋め込み済みです。':'Search Console確認コードは未入力です。';
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:context.issue.number,body:`HPを自動生成・公開しました。\n\n公開URL: ${url}\nサイトマップ: ${sitemap}\nデザイン: ${process.env.DESIGN}\n構成: ${process.env.STRUCTURE}\n\nSEO初期設定も自動生成済みです。\n${verify}`});
