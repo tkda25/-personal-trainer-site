@@ -120,6 +120,11 @@ jobs:
             fs.writeFileSync('robots.txt',`User-agent: *\nAllow: /\nSitemap: ${rootBase}sitemap.xml\n`);
             core.setOutput('slug',slug);core.setOutput('design',design);core.setOutput('structure',structure);core.setOutput('industry',industryKey);core.setOutput('has_verification',verification?'yes':'no');
 
+      - name: Run pre-publish QA
+        env:
+          SITE_SLUG: ${{ steps.generate.outputs.slug }}
+        run: node scripts/site-qa.js "sites/${SITE_SLUG}"
+
       - name: Commit generated site
         run: |
           git config user.name "github-actions[bot]"
