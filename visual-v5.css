@@ -1,0 +1,35 @@
+/* Visual diversity V5: compositional rules layered on top of V4. */
+
+/* Hero composition: make the same content feel structurally different. */
+body[data-hero="centered"] .hero{max-width:1040px;margin-left:auto;margin-right:auto;text-align:center;align-items:center}body[data-hero="centered"] .hero .hero-copy{max-width:840px;margin:auto}body[data-hero="centered"] .hero .hero-actions{justify-content:center}body[data-hero="centered"] [data-hero-photo]{max-width:920px;margin:34px auto 0}
+body[data-hero="editorial"] .hero{display:grid;grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr);gap:clamp(32px,6vw,96px);align-items:end}body[data-hero="editorial"] .hero h1{font-size:clamp(58px,9vw,126px);line-height:.88;letter-spacing:-.055em}body[data-hero="editorial"] .hero .hero-copy{align-self:end}body[data-hero="editorial"] [data-hero-photo]{min-height:72vh}
+body[data-hero="overlay"] .hero{position:relative;min-height:min(82vh,860px);display:flex;align-items:flex-end;overflow:hidden}body[data-hero="overlay"] .hero [data-hero-photo]{position:absolute;inset:0;width:100%;height:100%;z-index:0}body[data-hero="overlay"] .hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.72));z-index:1}body[data-hero="overlay"] .hero .hero-copy{position:relative;z-index:2;color:#fff;max-width:900px;padding:clamp(34px,6vw,84px)}body[data-hero="overlay"] .hero .hero-copy p{color:rgba(255,255,255,.78)}
+
+/* Density affects rhythm, not just gaps. */
+body[data-density="airy"] main>section:not(.hero){padding-top:clamp(92px,12vw,170px);padding-bottom:clamp(92px,12vw,170px)}body[data-density="airy"] main>section:not(.hero)>h2{font-size:clamp(42px,6vw,78px);letter-spacing:-.045em}
+body[data-density="compact"] main>section:not(.hero){padding-top:56px;padding-bottom:56px}body[data-density="compact"] main>section:not(.hero)>h2{margin-bottom:24px}body[data-density="compact"] .auto-grid{gap:12px}
+
+/* Luxury variants: editorial pricing, quiet testimonials, narrow text. */
+body[data-design="luxury"][data-hero="editorial"] #services .service-group>h4{font-family:Georgia,"Yu Mincho",serif;font-size:clamp(28px,3.4vw,46px);font-weight:400;margin-bottom:22px}body[data-design="luxury"][data-density="airy"] #reviews{max-width:980px;margin:auto}body[data-design="luxury"] #reviews .review-card p{font-family:Georgia,"Yu Mincho",serif;font-size:clamp(20px,2.2vw,28px);line-height:1.8}body[data-design="luxury"] #about .photo,body[data-design="luxury"] .industry-profile-photo{border-radius:0}
+
+/* Photo variants: gallery behaves like a magazine rather than cards. */
+body[data-design="photo"][data-images="high"] .industry-gallery{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}body[data-design="photo"][data-images="high"] .industry-tile:nth-child(3n+1){grid-column:span 7}body[data-design="photo"][data-images="high"] .industry-tile:nth-child(3n+2){grid-column:span 5;margin-top:90px}body[data-design="photo"][data-images="high"] .industry-tile:nth-child(3n){grid-column:3/span 8}body[data-design="photo"][data-images="high"] .industry-tile{border:0;background:transparent}body[data-design="photo"][data-images="high"] .industry-tile .photo{min-height:440px}body[data-design="photo"][data-images="high"] .industry-tile-copy{padding:18px 0 42px}
+
+/* Bold variants: campaign/landing-page energy. */
+body[data-design="bold"][data-density="compact"] #features article:nth-child(even){background:var(--accent);color:#fff}body[data-design="bold"] #features article small{font-size:13px;font-weight:900;letter-spacing:.16em}body[data-design="bold"] #services .service-group>h4{text-transform:uppercase;letter-spacing:.08em}body[data-design="bold"] #faq details{border-top:3px solid #111;border-radius:0}body[data-design="bold"] #faq summary{font-size:18px;font-weight:900}
+
+/* Friendly variants: staggered editorial cards instead of uniform grids. */
+body[data-design="friendly"] #features article:nth-child(3n){transform:translateY(-10px) rotate(.4deg)}body[data-design="friendly"] #services article:nth-child(odd){transform:rotate(-.35deg)}body[data-design="friendly"] #services article:nth-child(even){transform:rotate(.35deg)}body[data-design="friendly"] #reviews .auto-grid{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-design="friendly"] #reviews .review-card:nth-child(even){margin-top:36px}
+
+/* Minimal variants: product-page feel, restrained typography and rows. */
+body[data-design="minimal"] main>section:not(.hero){border-top:1px solid #e7e7e7}body[data-design="minimal"] main>section:not(.hero)>h2{font-size:clamp(28px,4vw,46px);font-weight:600}body[data-design="minimal"] #features article,body[data-design="minimal"] #services article,body[data-design="minimal"] .review-card{border:0;border-bottom:1px solid #e8e8e8;border-radius:0;box-shadow:none;padding:28px 0}body[data-design="minimal"] #faq details{border:0;border-bottom:1px solid #e8e8e8;border-radius:0}
+
+/* Industry-specific composition. */
+body[data-industry="hair"] .industry-heading h2{font-family:Georgia,"Yu Mincho",serif;font-weight:400;letter-spacing:-.04em}body[data-industry="hair"][data-design="photo"] .industry-profile{grid-template-columns:.8fr 1.2fr}
+body[data-industry="gym"] .industry-heading h2{font-size:clamp(52px,8vw,108px);text-transform:uppercase;letter-spacing:-.06em}body[data-industry="gym"] .industry-profile{border-top:6px solid #111}
+body[data-industry="restaurant"] #services .service-group{border-bottom:1px solid rgba(0,0,0,.16);padding-bottom:42px;margin-bottom:42px}body[data-industry="restaurant"] #services .service-group>h4{font-family:Georgia,"Yu Mincho",serif;font-weight:400}
+
+/* CTA placement changes the contact block's role. */
+body[data-cta="after-services"] #contact{margin-top:0}body[data-cta="after-services"] #contact .contact-inner{max-width:920px}body[data-cta="footer"] #contact{margin-top:clamp(60px,10vw,140px)}
+
+@media(max-width:760px){body[data-hero="editorial"] .hero{grid-template-columns:1fr}body[data-hero="editorial"] .hero h1{font-size:clamp(48px,16vw,76px)}body[data-hero="overlay"] .hero{min-height:72vh}body[data-hero="overlay"] .hero .hero-copy{padding:30px 22px}body[data-design="photo"][data-images="high"] .industry-gallery{grid-template-columns:1fr}body[data-design="photo"][data-images="high"] .industry-tile:nth-child(n){grid-column:auto;margin-top:0}body[data-design="photo"][data-images="high"] .industry-tile .photo{min-height:340px}body[data-design="friendly"] #features article:nth-child(n),body[data-design="friendly"] #services article:nth-child(n){transform:none}body[data-design="friendly"] #reviews .auto-grid{grid-template-columns:1fr}body[data-design="friendly"] #reviews .review-card:nth-child(even){margin-top:0}}
