@@ -1,10 +1,11 @@
+const visualCss=document.createElement('link');visualCss.rel='stylesheet';visualCss.href=location.pathname.includes('/sites/')?'../../visual-v4.css':'visual-v4.css';document.head.appendChild(visualCss);
 function initSite(){
   const c=window.SITE_CONFIG||{},one=s=>document.querySelector(s),all=s=>[...document.querySelectorAll(s)];
   const text=(s,v)=>{if(v==null)return;const e=one(s);if(e)e.textContent=v},html=(s,v)=>{if(v==null)return;const e=one(s);if(e)e.innerHTML=v};
   const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const safeMediaUrl=u=>{try{const x=new URL(u,location.href);return ['http:','https:'].includes(x.protocol)?x.href:''}catch{return''}};
   const setPhoto=(el,url,fallback)=>{if(!el)return;const u=safeMediaUrl(url);if(u){el.textContent='';el.style.backgroundImage=`url("${u.replace(/"/g,'%22')}")`;el.style.backgroundSize='cover';el.style.backgroundPosition='center';el.style.backgroundRepeat='no-repeat';el.setAttribute('role','img');el.setAttribute('aria-label',fallback||c.brand||'Photo')}else if(fallback!=null)el.textContent=fallback};
-  const parseAiLayout=()=>{const n=String(c.layout?.notes||'').match(/\[\[AI_LAYOUT:(\{[\s\S]*?\})\]\]/);if(!n)return{};try{return JSON.parse(n[1])}catch{return{}}};
+  const parseAiLayout=()=>{const raw=String(c.layout?.notes||'');let n=raw.match(/\[AI_LAYOUT\](\{[\s\S]*?\})\[\/AI_LAYOUT\]/);if(!n)n=raw.match(/\[\[AI_LAYOUT:(\{[\s\S]*?\})\]\]/);if(!n)return{};try{return JSON.parse(n[1])}catch{return{}}};
   const aiLayout=parseAiLayout();
   const valid=(v,a,f)=>a.includes(v)?v:f;
   const density=valid(aiLayout.density,['compact','balanced','airy'],'balanced');
