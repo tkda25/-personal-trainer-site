@@ -4,6 +4,15 @@ function initSite(){
   const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const safeMediaUrl=u=>{try{const x=new URL(u,location.href);return ['http:','https:'].includes(x.protocol)?x.href:''}catch{return''}};
   const setPhoto=(el,url,fallback)=>{if(!el)return;const u=safeMediaUrl(url);if(u){el.textContent='';el.style.backgroundImage=`url("${u.replace(/"/g,'%22')}")`;el.style.backgroundSize='cover';el.style.backgroundPosition='center';el.style.backgroundRepeat='no-repeat';el.setAttribute('role','img');el.setAttribute('aria-label',fallback||c.brand||'Photo')}else if(fallback!=null)el.textContent=fallback};
+  const parseAiLayout=()=>{const n=String(c.layout?.notes||'').match(/\[\[AI_LAYOUT:(\{[\s\S]*?\})\]\]/);if(!n)return{};try{return JSON.parse(n[1])}catch{return{}}};
+  const aiLayout=parseAiLayout();
+  const valid=(v,a,f)=>a.includes(v)?v:f;
+  const density=valid(aiLayout.density,['compact','balanced','airy'],'balanced');
+  const heroStyle=valid(aiLayout.heroStyle,['split','centered','overlay','editorial'],'split');
+  const imageEmphasis=valid(aiLayout.imageEmphasis,['low','medium','high'],'medium');
+  const ctaPlacement=valid(aiLayout.ctaPlacement,['hero','after-services','sticky-mobile','footer'],'footer');
+  document.body.dataset.density=density;document.body.dataset.hero=heroStyle;document.body.dataset.images=imageEmphasis;document.body.dataset.cta=ctaPlacement;
+
   if(c.title)document.title=c.title;if(c.description){const m=one('meta[name="description"]');if(m)m.setAttribute('content',c.description)}
   if(c.theme?.accent)document.documentElement.style.setProperty('--accent',c.theme.accent);
   const preset=c.layout?.design||'luxury';document.body.dataset.design=preset;
@@ -23,34 +32,21 @@ function initSite(){
   const fq=one('[data-faq]');if(fq)fq.innerHTML=(c.faq||[]).map(x=>`<details><summary>${esc(x.q)}</summary><p>${esc(x.a)}</p></details>`).join('');
   html('[data-contact-headline]',c.contact?.headlineHtml);text('[data-contact-description]',c.contact?.description);all('[data-primary-cta]').forEach(a=>{if(c.contact?.primaryLabel)a.textContent=c.contact.primaryLabel;const u=c.contact?.primaryUrl||'';if(u.startsWith('#')||safeMediaUrl(u))a.href=u});const em=one('[data-email-link]');if(em){if(c.contact?.email)em.href=`mailto:${encodeURIComponent(c.contact.email)}`;else em.style.display='none'}
 
-  const labels=c.industryProfile?.labels||{};
-  if(labels.reviews)text('#reviews h2',labels.reviews);
-  if(labels.access)text('#access h2',labels.access);
-  if(labels.faq)text('#faq h2',labels.faq);
+  const labels=c.industryProfile?.labels||{};if(labels.reviews)text('#reviews h2',labels.reviews);if(labels.access)text('#access h2',labels.access);if(labels.faq)text('#faq h2',labels.faq);
   const navLabels=c.industryProfile?.nav||{};all('nav a[href^="#"]').forEach(a=>{const id=a.getAttribute('href').slice(1);if(navLabels[id])a.textContent=navLabels[id]});
 
-  const hidden=new Set(c.layout?.hidden||[]);
-  const resultItems=c.results?.items||[],about=c.about||{};
-  const industryMeta={
-    hair:{eyebrow:'STYLE / SALON',title:'スタイルとサロン',galleryTitle:'STYLE GALLERY',profileTitle:'SALON / STAFF',profileHeading:'あなたらしさを引き出すサロンづくり'},
-    gym:{eyebrow:'RESULT / TRAINER',title:'結果とトレーナー',galleryTitle:'BEFORE & AFTER',profileTitle:'TRAINER',profileHeading:'目標まで伴走するトレーナー'},
-    restaurant:{eyebrow:'FOOD / DINING',title:'料理と空間',galleryTitle:'FOOD GALLERY',profileTitle:'DINING',profileHeading:'料理を楽しむための空間'}
-  };
+  const hidden=new Set(c.layout?.hidden||[]),resultItems=c.results?.items||[],about=c.about||{};
+  const industryMeta={hair:{eyebrow:'STYLE / SALON',title:'スタイルとサロン',galleryTitle:'STYLE GALLERY',profileTitle:'SALON / STAFF',profileHeading:'あなたらしさを引き出すサロンづくり'},gym:{eyebrow:'RESULT / TRAINER',title:'結果とトレーナー',galleryTitle:'BEFORE & AFTER',profileTitle:'TRAINER',profileHeading:'目標まで伴走するトレーナー'},restaurant:{eyebrow:'FOOD / DINING',title:'料理と空間',galleryTitle:'FOOD GALLERY',profileTitle:'DINING',profileHeading:'料理を楽しむための空間'}};
   const meta=industryMeta[industryKey];
-  if(meta&&(!hidden.has('results')||!hidden.has('about'))){
-    const section=document.createElement('section');section.id='industry-special';section.className='industry-special';
-    const gallery=!hidden.has('results')&&resultItems.length?`<div class="industry-block"><small>${meta.galleryTitle}</small><div class="industry-gallery">${resultItems.map((x,i)=>`<article class="industry-tile"><div class="photo" data-industry-photo="${i}">${esc(x.photoText||'PHOTO')}</div><div class="industry-tile-copy"><h3>${esc(x.title)}</h3><p>${esc(x.body)}</p></div></article>`).join('')}</div></div>`:'';
-    const profile=!hidden.has('about')?`<div class="industry-profile"><div class="industry-profile-copy"><small>${meta.profileTitle}</small><h2>${esc(meta.profileHeading)}</h2><h3>${esc(about.name||c.brand)}</h3><p>${esc(about.body||c.description)}</p></div><div class="photo industry-profile-photo" data-industry-profile-photo>${esc(about.photoText||'PHOTO')}</div></div>`:'';
-    section.innerHTML=`<div class="industry-heading"><small>${meta.eyebrow}</small><h2>${esc(meta.title)}</h2></div>${gallery}${profile}`;
-    const main=one('main');if(main)main.appendChild(section);
-    all('[data-industry-photo]').forEach((el,i)=>setPhoto(el,photos[i+2],el.textContent));setPhoto(one('[data-industry-profile-photo]'),photos[1],about.photoText);
-    const genericResults=one('#results'),genericAbout=one('#about');if(genericResults)genericResults.style.display='none';if(genericAbout)genericAbout.style.display='none';
-  }
-
+  if(meta&&(!hidden.has('results')||!hidden.has('about'))){const section=document.createElement('section');section.id='industry-special';section.className='industry-special';const gallery=!hidden.has('results')&&resultItems.length?`<div class="industry-block"><small>${meta.galleryTitle}</small><div class="industry-gallery">${resultItems.map((x,i)=>`<article class="industry-tile"><div class="photo" data-industry-photo="${i}">${esc(x.photoText||'PHOTO')}</div><div class="industry-tile-copy"><h3>${esc(x.title)}</h3><p>${esc(x.body)}</p></div></article>`).join('')}</div></div>`:'';const profile=!hidden.has('about')?`<div class="industry-profile"><div class="industry-profile-copy"><small>${meta.profileTitle}</small><h2>${esc(meta.profileHeading)}</h2><h3>${esc(about.name||c.brand)}</h3><p>${esc(about.body||c.description)}</p></div><div class="photo industry-profile-photo" data-industry-profile-photo>${esc(about.photoText||'PHOTO')}</div></div>`:'';section.innerHTML=`<div class="industry-heading"><small>${meta.eyebrow}</small><h2>${esc(meta.title)}</h2></div>${gallery}${profile}`;const main=one('main');if(main)main.appendChild(section);all('[data-industry-photo]').forEach((el,i)=>setPhoto(el,photos[i+2],el.textContent));setPhoto(one('[data-industry-profile-photo]'),photos[1],about.photoText);const genericResults=one('#results'),genericAbout=one('#about');if(genericResults)genericResults.style.display='none';if(genericAbout)genericAbout.style.display='none'}
   hidden.forEach(id=>{const e=one('#'+id);if(e)e.style.display='none'});
+
   const orders={standard:['concept','features','services','results','reviews','about','access','faq','contact'],conversion:['features','services','results','reviews','faq','about','access','concept','contact'],story:['concept','about','features','results','reviews','services','access','faq','contact'],proof:['results','reviews','features','services','about','access','faq','concept','contact']};
   const industryOrders={hair:['industry-special','reviews','features','services','access','faq','concept','contact'],gym:['industry-special','features','services','reviews','faq','access','concept','contact'],restaurant:['industry-special','services','reviews','concept','access','faq','features','contact']};
-  const main=one('main'),hero=one('.hero');if(main&&hero){const requested=c.layout?.structure||'standard';const order=requested==='standard'&&industryOrders[industryKey]?industryOrders[industryKey]:(orders[requested]||orders.standard);if(meta&&!order.includes('industry-special'))order.splice(Math.min(2,order.length),0,'industry-special');order.forEach(id=>{const s=one('#'+id);if(s)main.appendChild(s)});main.insertBefore(hero,main.firstChild)}
+  const main=one('main'),hero=one('.hero');if(main&&hero){const requested=c.layout?.structure||'standard';let order=Array.isArray(aiLayout.sectionOrder)?aiLayout.sectionOrder.filter(id=>orders.standard.includes(id)):[];if(!order.length)order=requested==='standard'&&industryOrders[industryKey]?[...industryOrders[industryKey]]:[...(orders[requested]||orders.standard)];if(meta&&!order.includes('industry-special'))order.splice(Math.min(imageEmphasis==='high'?0:2,order.length),0,'industry-special');if(ctaPlacement==='after-services'){const idx=order.indexOf('services');if(idx>=0){order=order.filter(x=>x!=='contact');order.splice(idx+1,0,'contact')}}order.forEach(id=>{const s=one('#'+id);if(s)main.appendChild(s)});main.insertBefore(hero,main.firstChild)}
+
+  if(hero){hero.classList.add(`ai-hero-${heroStyle}`);if(heroStyle==='overlay'&&photos[0])hero.classList.add('ai-has-photo')}
+  if(ctaPlacement==='sticky-mobile'){const original=one('[data-primary-cta]');if(original){const sticky=original.cloneNode(true);sticky.classList.add('ai-sticky-cta');sticky.setAttribute('aria-label',original.textContent||'お問い合わせ');document.body.appendChild(sticky)}}
   all('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=one(a.getAttribute('href'));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:'smooth'})}));
 }
 const configScript=document.createElement('script');configScript.src='site.config.js';configScript.onload=initSite;configScript.onerror=initSite;document.head.appendChild(configScript);
