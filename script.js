@@ -48,6 +48,7 @@ function initSite(){
 
   if(hero){hero.classList.add(`ai-hero-${heroStyle}`);if(heroStyle==='overlay'&&photos[0])hero.classList.add('ai-has-photo')}
   if(ctaPlacement==='sticky-mobile'){const original=one('[data-primary-cta]');if(original){const sticky=original.cloneNode(true);sticky.classList.add('ai-sticky-cta');sticky.setAttribute('aria-label',original.textContent||'お問い合わせ');document.body.appendChild(sticky)}}
+  const structural=document.createElement('script');structural.src=location.pathname.includes('/sites/')?'../../structural-v6.js':'structural-v6.js';structural.onload=()=>window.applyStructuralV6&&window.applyStructuralV6(c);document.body.appendChild(structural);
   all('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=one(a.getAttribute('href'));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:'smooth'})}));
 }
 const configScript=document.createElement('script');configScript.src='site.config.js';configScript.onload=initSite;configScript.onerror=initSite;document.head.appendChild(configScript);
