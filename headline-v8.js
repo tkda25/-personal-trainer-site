@@ -9,9 +9,10 @@
   const apply=()=>{
     classify(document.querySelector('.hero h1'),'hero');
     document.querySelectorAll('.v7-section-head h2, main>section:not(.hero)>h2').forEach(el=>classify(el,'section'));
-    document.querySelectorAll('.hero p, main section p, main section li, main section dd').forEach(el=>{el.classList.add('v8-readable-copy')});
+    document.querySelectorAll('.hero p, main section p, main section li, main section dd').forEach(el=>el.classList.add('v8-readable-copy'));
     document.body.dataset.headlineV8='ready';
   };
-  window.applyHeadlineV8=apply;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(apply,0));else setTimeout(apply,0);
+  const schedule=()=>[0,250,800].forEach(ms=>setTimeout(apply,ms));
+  window.applyHeadlineV8=()=>{apply();setTimeout(apply,250)};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule);else schedule();
 })();
