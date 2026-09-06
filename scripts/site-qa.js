@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 const fs=require('fs');
 const path=require('path');
+const {execFileSync,spawn}=require('child_process');
 
 const target=process.argv[2];
 if(!target){console.error('Usage: node scripts/site-qa.js sites/<slug>');process.exit(2)}
 const root=path.resolve(target);
+const slug=path.basename(root);
 const errors=[];const warnings=[];const passes=[];
 const err=(m)=>errors.push(m),warn=(m)=>warnings.push(m),ok=(m)=>passes.push(m);
 const exists=(f)=>fs.existsSync(path.join(root,f));
@@ -102,17 +104,16 @@ if(/ai-sticky-cta/.test(js)&&!/safe-area-inset-bottom/i.test(css))warn('sticky C
 if(/safeMediaUrl\s*=/.test(js)&&/if\(!raw\)return''/.test(js))ok('空URLガード');
 else warn('空URLガードを確認できません');
 
-const placeholders=['BRAND','MAIN PHOTO','ABOUT PHOTO','RESULT PHOTO'];
-for(const p of placeholders){
-  if(html.includes(`>${p}<`)&&p==='BRAND')warn('BRANDプレースホルダはJS置換前提です');
-}
+if(html.includes('>BRAND<'))warn('BRANDプレースホルダはJS置換前提です');
 
-finish();
+writeStaticSummary();
+if(errors.length)process.exit(1);
+runBrowserQa();
 
 function validUrl(v){
   try{const u=new URL(String(v));return ['http:','https:'].includes(u.protocol)}catch{return false}
 }
-function finish(){
+function writeStaticSummary(){
   const lines=[];
   lines.push('## Pre-publish QA');
   lines.push(`- Errors: ${errors.length}`);
@@ -121,9 +122,27 @@ function finish(){
   if(errors.length){lines.push('\n### Errors');errors.forEach(x=>lines.push(`- ❌ ${x}`));}
   if(warnings.length){lines.push('\n### Warnings');warnings.forEach(x=>lines.push(`- ⚠️ ${x}`));}
   lines.push('\n### Result');
-  lines.push(errors.length?'❌ 公開停止: 修正が必要です':'✅ 公開可能: 重大エラーなし');
+  lines.push(errors.length?'❌ 公開停止: 修正が必要です':'✅ 静的QA通過: ブラウザQAへ進みます');
   const out=lines.join('\n');
   console.log(out);
   if(process.env.GITHUB_STEP_SUMMARY){try{fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,out+'\n')}catch{}}
+}
+function finish(){
+  writeStaticSummary();
   process.exit(errors.length?1:0);
+}
+function runBrowserQa(){
+  console.log('\nInstalling browser QA runtime...');
+  execFileSync('npm',['install','--no-save','--package-lock=false','playwright@1.55.0'],{stdio:'inherit'});
+  execFileSync('npx',['playwright','install','--with-deps','chromium'],{stdio:'inherit'});
+  const server=spawn('python3',['-m','http.server','4173','--bind','127.0.0.1'],{cwd:path.resolve('.'),stdio:'ignore'});
+  const stop=()=>{try{server.kill('SIGTERM')}catch{}};
+  process.on('exit',stop);process.on('SIGINT',()=>{stop();process.exit(130)});process.on('SIGTERM',()=>{stop();process.exit(143)});
+  try{
+    const waitUntil=Date.now()+10000;
+    while(Date.now()<waitUntil){
+      try{execFileSync('curl',['-fsS','http://127.0.0.1:4173/'],{stdio:'ignore'});break}catch{Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,200)}
+    }
+    execFileSync(process.execPath,['scripts/browser-qa.js',slug],{stdio:'inherit',env:{...process.env,BROWSER_QA_BASE:'http://127.0.0.1:4173'}});
+  }finally{stop()}
 }
