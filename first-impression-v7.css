@@ -19,7 +19,10 @@ section[data-v7-heading="clean"] .v7-section-head h2{font-size:clamp(32px,4.6vw,
   body>header[data-v7-nav] nav{gap:10px}
   body>header[data-v7-nav] nav a:not(.v7-nav-cta){display:none}
   body>header[data-v7-nav] .v7-nav-cta{font-size:12px!important;padding:9px 12px!important;white-space:nowrap}
-  body>header[data-v7-nav="floating"]{padding:10px 12px}
+  body>header[data-v7-nav="floating"]{padding:10px 12px;background:transparent!important;box-shadow:none!important}
+  body>header[data-v7-nav="floating"] .v7-header-inner{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;border-radius:0!important;padding:4px 2px!important}
+  body>header[data-v7-nav="floating"] [data-brand]{color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+  body>header[data-v7-nav="floating"] .v7-nav-cta{background:rgba(17,17,17,.72)!important;color:#fff!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2)}
   .v7-header-inner{border-radius:18px;align-items:center;padding:10px 12px;gap:12px;width:100%}
   .v7-header-inner nav{display:flex!important;margin-left:auto!important}
   body>header[data-v7-nav="editorial"]{grid-template-columns:1fr auto;gap:10px}
@@ -31,7 +34,7 @@ section[data-v7-heading="clean"] .v7-section-head h2{font-size:clamp(32px,4.6vw,
   .hero[data-v7-hero="product"]{padding:42px 20px 34px;gap:28px}
   .hero[data-v7-hero="product"] .v7-hero-copy h1{font-size:clamp(42px,12vw,58px);line-height:.98}
   .v7-product-meta{margin-top:24px}
-  .hero[data-v7-hero="gallery"]{padding-top:78px}
+  .hero[data-v7-hero="gallery"]{padding-top:56px}
   .hero[data-v7-hero="gallery"] .v7-hero-copy,.hero[data-v7-hero="campaign"] .v7-hero-copy,.hero[data-v7-hero="magazine"] .v7-hero-copy{padding:32px 20px}
   .hero[data-v7-hero="gallery"] .v7-hero-copy h1{font-size:clamp(42px,11vw,56px);line-height:1.02}
   .hero[data-v7-hero="campaign"] .v7-hero-copy h1{font-size:clamp(44px,12vw,62px);line-height:.92}
